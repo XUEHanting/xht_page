@@ -12,6 +12,7 @@ A modern, responsive web application for managing personal notes with a beautifu
 - **Responsive Design**: Works perfectly on desktop and mobile devices
 - **Modern UI**: Beautiful gradient design with smooth animations
 - **Real-time Updates**: Instant feedback and updates
+- **Translate Notes**: Translate note content to Chinese or English via OpenRouter
 
 ## 🚀 Live Demo
 
@@ -26,11 +27,11 @@ The application is deployed and accessible at: **https://3dhkilc88dkk.manus.spac
 
 ### Backend
 - **Python Flask**: Web framework for API endpoints
-- **SQLAlchemy**: ORM for database operations
+- **supabase-py**: Official Supabase client for database access
 - **Flask-CORS**: Cross-origin resource sharing support
 
 ### Database
-- **SQLite**: Lightweight, file-based database for data persistence
+- **Supabase (PostgreSQL)**: Hosted Postgres with Data API
 
 ## 📁 Project Structure
 
@@ -38,20 +39,24 @@ The application is deployed and accessible at: **https://3dhkilc88dkk.manus.spac
 notetaking-app/
 ├── src/
 │   ├── models/
-│   │   ├── user.py          # User model (template)
-│   │   └── note.py          # Note model with database schema
+│   │   ├── user.py              # Placeholder (auth not implemented)
+│   │   └── note.py              # Note response helpers
 │   ├── routes/
-│   │   ├── user.py          # User API routes (template)
-│   │   └── note.py          # Note API endpoints
+│   │   ├── user.py              # User API placeholder
+│   │   └── note.py              # Note API endpoints (Supabase)
+│   ├── services/
+│   │   ├── supabase_client.py   # Supabase client factory
+│   │   └── translator.py        # OpenRouter translation service
 │   ├── static/
-│   │   ├── index.html       # Frontend application
-│   │   └── favicon.ico      # Application icon
-│   ├── database/
-│   │   └── app.db           # SQLite database file
-│   └── main.py              # Flask application entry point
-├── venv/                    # Python virtual environment
-├── requirements.txt         # Python dependencies
-└── README.md               # This file
+│   │   ├── index.html           # Frontend application
+│   │   └── favicon.ico          # Application icon
+│   └── main.py                  # Flask application entry point
+├── supabase/
+│   └── schema.sql               # SQL to create the notes table
+├── .env.example                 # Example environment variables
+├── venv/                        # Python virtual environment
+├── requirements.txt             # Python dependencies
+└── README.md                    # This file
 ```
 
 ## 🔧 Local Development Setup
@@ -59,32 +64,45 @@ notetaking-app/
 ### Prerequisites
 - Python 3.11+
 - pip (Python package manager)
+- A [Supabase](https://supabase.com/) project
 
 ### Installation Steps
 
-1. **Clone or download the project**
+1. **Create / activate the virtual environment**
    ```bash
    python -m venv venv
    ```
 
-2. **Activate the virtual environment**
    ```bash
    source venv/bin/activate
    ```
 
    Remark: On Windows, use `venv\Scripts\activate`
 
-3. **Install dependencies**
+2. **Install dependencies**
    ```bash
    pip install -r requirements.txt
    ```
 
-4. **Run the application**
+3. **Create the Supabase table**
+   - Open your Supabase project → **SQL Editor**
+   - Paste and run the contents of `supabase/schema.sql`
+
+4. **Configure environment variables**
+   ```bash
+   copy .env.example .env
+   ```
+   Then edit `.env` and set:
+   - `SUPABASE_URL`
+   - `SUPABASE_SERVICE_ROLE_KEY` (Project Settings → API → `service_role`)
+   - `OPENROUTER_API_KEY` (optional, only needed for translation)
+
+5. **Run the application**
    ```bash
    python src/main.py
    ```
 
-5. **Access the application**
+6. **Access the application**
    - Open your browser and go to `http://localhost:5001`
 
 ## 📡 API Endpoints
@@ -96,6 +114,7 @@ notetaking-app/
 - `PUT /api/notes/<id>` - Update a note
 - `DELETE /api/notes/<id>` - Delete a note
 - `GET /api/notes/search?q=<query>` - Search notes
+- `POST /api/notes/translate` - Translate note title and content (`title`, `content`, `target_lang`: `zh` or `en`)
 
 ### Request/Response Format
 ```json
@@ -103,8 +122,8 @@ notetaking-app/
   "id": 1,
   "title": "My Note Title",
   "content": "Note content here...",
-  "created_at": "2025-09-03T11:26:38.123456",
-  "updated_at": "2025-09-03T11:27:30.654321"
+  "created_at": "2025-09-03T11:26:38.123456+00:00",
+  "updated_at": "2025-09-03T11:27:30.654321+00:00"
 }
 ```
 
@@ -119,6 +138,7 @@ notetaking-app/
 ### Editor Panel
 - **Title Input**: Edit note titles
 - **Content Textarea**: Rich text editing area
+- **Translate Controls**: Choose Chinese/English and translate the current content
 - **Save Button**: Manual save option (auto-save also available)
 - **Delete Button**: Remove notes with confirmation
 - **Real-time Updates**: Changes reflected immediately
@@ -132,14 +152,15 @@ notetaking-app/
 
 ## 🔒 Database Schema
 
-### Notes Table
+Create the table with `supabase/schema.sql`. Equivalent structure:
+
 ```sql
-CREATE TABLE note (
-    id INTEGER PRIMARY KEY,
-    title VARCHAR(200) NOT NULL,
-    content TEXT NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+create table public.notes (
+  id bigint generated by default as identity primary key,
+  title text not null default '',
+  content text not null default '',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
 );
 ```
 
@@ -149,18 +170,23 @@ The application is configured for easy deployment with:
 - CORS enabled for cross-origin requests
 - Host binding to `0.0.0.0` for external access
 - Production-ready Flask configuration
-- Persistent SQLite database
+- Supabase-hosted PostgreSQL for persistent storage
 
 ## 🔧 Configuration
 
 ### Environment Variables
 - `FLASK_ENV`: Set to `development` for debug mode
 - `SECRET_KEY`: Flask secret key for sessions
+- `SUPABASE_URL`: Supabase project URL
+- `SUPABASE_SERVICE_ROLE_KEY`: Supabase service role key (preferred for this backend)
+- `SUPABASE_KEY`: Optional alias for the Supabase key
+- `OPENROUTER_API_KEY`: OpenRouter API key used by the translate feature
+- `OPENROUTER_MODEL`: Optional model override (default: `deepseek/deepseek-v4.1-flash`)
 
 ### Database Configuration
-- Database file: `src/database/app.db`
-- Automatic table creation on first run
-- SQLAlchemy ORM for database operations
+- Provider: Supabase PostgreSQL
+- Access: `supabase-py` Data API from the Flask backend
+- Schema file: `supabase/schema.sql`
 
 ## 📱 Browser Compatibility
 
@@ -187,13 +213,14 @@ This project is open source and available under the MIT License.
 For issues or questions:
 1. Check the browser console for error messages
 2. Verify the Flask server is running
-3. Ensure all dependencies are installed
-4. Check network connectivity for the deployed version
+3. Ensure Supabase credentials are set in `.env`
+4. Confirm `supabase/schema.sql` was executed in your project
+5. Ensure all dependencies are installed
 
 ## 🎯 Future Enhancements
 
 Potential improvements for future versions:
-- User authentication and multi-user support
+- User authentication and multi-user support (Supabase Auth + RLS)
 - Note categories and tags
 - Rich text formatting (bold, italic, lists)
 - File attachments
@@ -204,5 +231,4 @@ Potential improvements for future versions:
 
 ---
 
-**Built with ❤️ using Flask, SQLite, and modern web technologies**
-
+**Built with ❤️ using Flask, Supabase, and modern web technologies**

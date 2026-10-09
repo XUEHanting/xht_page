@@ -1,18 +1,5 @@
-from flask_sqlalchemy import SQLAlchemy
+"""User model placeholder.
 
-db = SQLAlchemy()
-
-class User(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), unique=True, nullable=False)
-    email = db.Column(db.String(120), unique=True, nullable=False)
-
-    def __repr__(self):
-        return f'<User {self.username}>'
-
-    def to_dict(self):
-        return {
-            'id': self.id,
-            'username': self.username,
-            'email': self.email
-        }
+Authentication / multi-user support is not wired yet.
+Notes currently live in Supabase without per-user ownership.
+"""
